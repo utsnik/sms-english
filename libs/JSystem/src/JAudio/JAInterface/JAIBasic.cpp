@@ -21,6 +21,10 @@
 
 #include <JSystem/JAudio/JAInterface/JAIConst.hpp>
 
+#ifdef TARGET_WIIU
+extern "C" void port_audio_dsp_wait_for_setup(void);
+#endif
+
 JAIBasic* JAIBasic::basic;
 
 JAICamera JAInullCamera(&JAIConst::camTrans, &JAIConst::camPreTrans,
@@ -615,6 +619,12 @@ void JAIBasic::initDriver(JKRSolidHeap* heap, u32 aram_heap_size, u8 param_3)
 {
 	JKRSolidHeap* rootHeap = heap;
 	initAudioThread(rootHeap, aram_heap_size, param_3);
+#ifdef TARGET_WIIU
+	/* The audio thread owns DSPInterface::initBuffer(), while the main thread
+	 * enters initInterface() next and may call DSP_CreateMap(). Let the HLE
+	 * publish its setup only after that channel table is live. */
+	port_audio_dsp_wait_for_setup();
+#endif
 }
 
 void JAIBasic::initInterface(u8 param)
